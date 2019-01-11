@@ -15,3 +15,13 @@ colnames(counts) = samples$shortname
 d = DGEList(counts = counts, group = samples$condition)
 d = calcNormFactors(d)
 plotMDS(d, labels = samples$shortname,col = rep(c("darkgreen","darkblue"),21),main='htseqcount')
+
+
+trimGencode<-function(ids) sub("^(.*)[.].*", "\\1",ids)
+library(biomaRt)
+human<- useMart(biomart='ensembl', dataset = "hsapiens_gene_ensembl")
+anno<-getBM(attributes=c("ensembl_gene_id","entrezgene","hgnc_symbol"),filters="ensembl_gene_id",values=trimGencode(rownames(d$counts)),mart=human)
+head(anno)
+save(d,anno,file="../r_objects/180913_expressionData.rdata")
+cpms<-cpm(d)
+

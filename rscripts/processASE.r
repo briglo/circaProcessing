@@ -85,7 +85,7 @@ colnames(tmp)<-gsub("mcols.","",colnames(tmp))
 mcols(ASE)<-tmp[,c(6:14)]
 
 
-load("annotations/genes/hg19_ens.ano.rdata")
+load("r_objects/hg19_ens.ano.rdata")
 exons<-hg19_ens[hg19_ens$type=='exon']
 
 maxASE<-ASE[ASE$adj_pbio<0.001]
@@ -125,3 +125,43 @@ ggplot(ASE_byGeneExonHit[ASE_byGeneExonHit$totalCandForASE>totCutoff & ASE_byGen
 }
 
 save(tmp,ASE,ASE_byGeneExonHit,file='ASEtableForPlotting.rdata')
+
+
+### getting spread of ASE genes
+load('r_objects/ASEtableForPlotting.rdata')
+load("../r_objects/IUIS_361_geneNames.rdata")
+load('../r_objects/ASEtableForPlotting.rdata')
+library(UpSetR)
+maxASE<-ASE[ASE$adj_pbio<0.001]
+smaxASE<-split(maxASE,maxASE$sample)
+ugeneIDs<-lapply(smaxASE,function(x) unique(unlist(strsplit(as.character(x$geneExonHit),";"))))
+allgenes<-as.character(unique(unlist(ugeneIDs)))
+udat<-data.frame(do.call(cbind,lapply(ugeneIDs, function(x) ifelse(allgenes %in% x,1,0))))
+upsetdat<-data.frame(varID=as.character(allgenes),udat)
+
+upset(upsetdat, order.by = "freq",nsets = 9,nintersects = 20)
+dev.copy2pdf(file="../plots/180912_ASE_sig_upset.pdf")
+
+upset(upsetdat[upsetdat$varID %in% iuis,], order.by = "freq",nsets = 9,nintersects = 20)
+dev.copy2pdf(file="../plots/180912_ASE_sig_immune_upset.pdf")
+
+#on obervation, lots are UTR... which may or may not mean anything
+
+###so 
+
+load('../r_objects/hg19_ens.ano.rdata')
+utrs<-hg19_ens[grepl("utr",hg19_ens$type)]
+csmaxASE<-lapply(smaxASE, function(X) X[!X %over% utrs])
+ugeneIDs<-lapply(csmaxASE,function(x) unique(unlist(strsplit(as.character(x$geneExonHit),";"))))
+allgenes<-as.character(unique(unlist(ugeneIDs)))
+udat<-data.frame(do.call(cbind,lapply(ugeneIDs, function(x) ifelse(allgenes %in% x,1,0))))
+upsetdat<-data.frame(varID=as.character(allgenes),udat)
+
+upset(upsetdat, order.by = "freq",nsets = 9,nintersects = 20)
+dev.copy2pdf(file="../plots/180912_sig_nonUTR_upset.pdf")
+upset(upsetdat[upsetdat$varID %in% iuis,], order.by = "freq",nsets = 9,nintersects = 20)
+dev.copy2pdf(file="../plots/180912_sig_nonUTR_immune_upset.pdf")
+
+
+imcsmaxASE<-lapply(csmaxASE, function(X) X[X$geneExonHit %in% iuis])
+lapply(imcsmaxASE, function(x) unique(x$geneExonHit))
